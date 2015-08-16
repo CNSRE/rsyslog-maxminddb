@@ -52,7 +52,7 @@ if ( $parsesuccess == "OK" ) then {
     action( type="mmdb" data="/data/geoip2.mmdb" fieldList=["country","city","isp","lat","lon"] key="$!msg!clientip" )
     set $!iplocation!location = $!iplocation!lat & "," & $!iplocation!lon;
     unset $!iplocation!lat;
-    unset $!iplocation1lon;
+    unset $!iplocation!lon;
     action( type="omelasticsearch" template="clientlogtmpl" server="10.10.10.10" bulkmode="on" )
     stop
 }
