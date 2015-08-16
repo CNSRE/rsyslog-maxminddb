@@ -6,8 +6,8 @@ MaxMindDB 是 MaxMind 公司继 GeoIP 之后推出的新一代 IP 地址库[格�
 
 和 GeoIP 相比，MaxMindDB 有两个重要优势：
 
-1. 新格式的性能提升 4 到 6 倍；
-2. MaxMindDB 提供自己生成地址库的写入工具。
+1. 同为 C 接口，新格式的性能也提升了 4 到 6 倍；
+2. MaxMindDB 提供了自己生成私有地址库的写入工具。
 
 为完成高性能高精确度的 IP 归属地解析，选择在 Rsyslog 项目基础上，利用 C 语言版本的 libmaxminddb 接口开发了这个 Message Modification Module，目前已在新浪线上稳定运行数月。
 
