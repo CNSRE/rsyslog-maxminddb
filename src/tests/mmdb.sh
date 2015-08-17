@@ -10,5 +10,5 @@ echo doing shutdown
 . $srcdir/diag.sh shutdown-when-empty 
 echo wait on shutdown 
 . $srcdir/diag.sh wait-shutdown  
-. $srcdir/diag.sh content-check '"city":"Beijing"' 
+. $srcdir/diag.sh content-check '"city" : "Beijing"' 
 . $srcdir/diag.sh exit 
