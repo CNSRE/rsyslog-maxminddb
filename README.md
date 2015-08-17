@@ -22,6 +22,8 @@ git clone https://github.com/rsyslog/rsyslog.git
 cp -r src/contrib/mmdblookup ../rsyslog/contrib/
 cp src/configure.ac ../rsyslog/
 cp src/Makefile.am ../rsyslog/
+# 可以包括测试用例一起
+# cp src/tests ../rsyslog/
 ```
 3. 编译 rsyslog：
 ```
