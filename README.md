@@ -19,17 +19,24 @@ git clone https://github.com/rsyslog/rsyslog.git
 ```
 2. 复制本仓库源码文件到 rsyslog 源码目录内：
 ```
-cp -r src/contrib/mmdb ../rsyslog/contrib/
+cp -r src/contrib/mmdblookup ../rsyslog/contrib/
 cp src/configure.ac ../rsyslog/
 cp src/Makefile.am ../rsyslog/
 ```
 3. 编译 rsyslog：
 ```
 export PKG_CONFIG_PATH=/lib64/pkgconfig/
-yum install -y libestr liblogging libmaxminddb
+yum install -y libestr liblogging libmaxminddb-devel
 yum install -y git-core valgrind autoconf automake flex bison json-c-devel libuuid-devel libgcrypt-devel zlib-devel openssl-devel libcurl-devel gnutls-devel mysql-devel postgresql-devel libdbi-dbd-mysql libdbi-devel net-snmp-devel
 autoconf
-./configure --enable-mmdb --enable-elasticsearch --enable-mmjsonparse --***(其他你想加上的参数)
+./configure --enable-mmdblookup --enable-elasticsearch --enable-mmjsonparse --***(其他你想加上的参数)
+```
+
+或者通过 rpmbuild 方式打包：
+```
+git clone https://github.com/rsyslog/rsyslog-pkg-rhel-centos
+cp util/rsyslog.spec ./rsyslog-pkg-rhel-centos/rpmbuild/SPECS/v8-stable.spec
+rpmbuild -bb ./rsyslog-pkg-rhel-centos/rpmbuild/SPECS/v8-stable.spec
 ```
 
 ## 部署使用
@@ -39,17 +46,17 @@ autoconf
 wget ftp://ftp.pbone.net/mirror/ftp.pramberger.at/systems/linux/contrib/rhel6/x86_64/libmaxminddb-1.0.4-1.el6.pp.x86_64.rpm
 rpm -ivh libmaxminddb-1.0.4-1.el6.pp.x86_64.rpm
 ```
-2. 可以直接使用之前编译所得的完整 rsyslog，也可以单独复制 rsyslog-mmdb.so 文件到 /lib64/rsyslog 目录下。
+2. 可以直接使用之前编译所得的完整 rsyslog，也可以单独复制 mmdblookup.so 文件到 /lib64/rsyslog 目录下。
 
 ## 配置示例
 
 ```
-module( load="mmdb" )
+module( load="mmdblookup" )
 module( load="omelasticsearch" )
 template( type="string" string="{\"@timestamp\":\"%timereported:::date-rfc3339%\",\"host\":\"%hostname%\",\"geoip2\":%$!iplocation%,%$!msg:2:$%" name="clientlogtmpl" )
 action( type="mmjsonparse" )
 if ( $parsesuccess == "OK" ) then {
-    action( type="mmdb" data="/data/geoip2.mmdb" fieldList=["country","city","isp","lat","lon"] key="$!msg!clientip" )
+    action( type="mmdblookup" mmdbfile="/data/geoip2.mmdb" fields=["country","city","isp","lat","lon"] key="!msg!clientip" )
     set $!iplocation!location = $!iplocation!lat & "," & $!iplocation!lon;
     unset $!iplocation!lat;
     unset $!iplocation!lon;
