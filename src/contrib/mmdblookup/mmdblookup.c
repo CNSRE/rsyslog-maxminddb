@@ -211,6 +211,19 @@ BEGINtryResume
 CODESTARTtryResume
 ENDtryResume
 
+int str_split(char **array, char *buf, char *sep, int max){
+    char *token;
+    int i = 0;
+    int size = 0;
+    char *bp = strdup(buf);
+    while ( ( i < max -1 ) && ((token = strsep(&bp,sep))!= NULL ) ) {
+        array[i++] = token;
+    }
+    array[i] = NULL;  // set to null
+    size = i;
+    return size;
+}
+
 BEGINdoAction
      msg_t *pMsg;
      struct json_object *json = NULL;
@@ -249,7 +262,12 @@ CODESTARTdoAction
      for(int i = 0 ; i <  pData->fieldList.nmemb ; ++i) {
           char *ret = NULL;
           MMDB_entry_data_s entry_data;
-          int status = MMDB_get_value(&result.entry, &entry_data, pData->fieldList.name[i], NULL);
+          char buf[100];
+          strcpy(buf, pData->fieldList.name[i]);
+          char *path[50];
+          char sep[] = "!";
+          int number = str_split(path, buf+1, sep, 50);
+          int status = MMDB_aget_value(&result.entry, &entry_data, path, NULL);
           if(MMDB_SUCCESS != status) {
                dbgprintf("Got an error looking up the entry data - %s\n", MMDB_strerror(status));
           }
@@ -257,6 +275,7 @@ CODESTARTdoAction
                ret = strndup(entry_data.utf8_string, entry_data.data_size);
                json_object_object_add(json, (char*)pData->fieldList.name[i], json_object_new_string(ret));
           }
+          free(path);
      }
 
 
