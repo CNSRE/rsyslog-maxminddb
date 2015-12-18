@@ -296,10 +296,8 @@ CODESTARTdoAction
 			  
           if(entry_data.has_data) {
 			ret = strndup(entry_data.utf8_string, entry_data.data_size);
-			dbgprintf("ret %s\n",ret);
 		 --j;
 		 int k = j;			
-			dbgprintf("j %d\n",j);
 		for (;j>= 0;--j){
 			if (json1[k] == NULL ){
 				json1[k] = json_object_new_object(); 
@@ -316,7 +314,6 @@ CODESTARTdoAction
 				k--;
 		       }
 			}
-			dbgprintf("json %s\n",json_object_get_string(json));
           }
      }
 		
