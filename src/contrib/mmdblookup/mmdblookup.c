@@ -240,12 +240,14 @@ CODESTARTdoAction
      msgPropDescrFill(&pProp, (uchar*)pData->pszKey, strlen(pData->pszKey));
      rsRetVal localRet = msgGetJSONPropJSON(pMsg, &pProp, &keyjson);
      msgPropDescrDestruct(&pProp);
+	
      if(localRet != RS_RET_OK) {
 	  /* key not found in the message. nothing to do */
 	  ABORT_FINALIZE(RS_RET_OK);
      }
      /* key found, so get the value */
      pszValue = (char*)json_object_get_string(keyjson);
+
 
      int gai_err, mmdb_err;
      MMDB_lookup_result_s result = MMDB_lookup_string(&pWrkrData->mmdb, pszValue, &gai_err, &mmdb_err);
@@ -260,29 +262,69 @@ CODESTARTdoAction
      }
 
      for(int i = 0 ; i <  pData->fieldList.nmemb ; ++i) {
+     	  struct json_object *json1[5] = {NULL};
           char *ret = NULL;
           MMDB_entry_data_s entry_data;
           char buf[100];
-          strcpy(buf, pData->fieldList.name[i]);
-          char *path[50];
+          strcpy(buf, (char *)pData->fieldList.name[i]);
+          char *path[100] = {NULL};
           char sep[] = "!";
-          int number = str_split(path, buf+1, sep, 50);
-          int status = MMDB_aget_value(&result.entry, &entry_data, path, NULL);
+		  int j = 0;
+		  char *s=strtok(buf,sep);
+		  dbgprintf("s %s\n",s);
+          for (; s != NULL; j++){		  
+		  		path[j] = s;
+				s =strtok(NULL,sep);
+	  	  }
+		
+		if (j < 2){
+			path[1] = "names";
+			j++;
+		}
+		if (j < 3){
+			path[2] = "zh-CN";
+			j++;
+		}
+		/*if (path[0] == "location"){
+			path[1] = "time_zone";
+			path[2] = '\000';
+		}*/
+          int status = MMDB_aget_value(&result.entry, &entry_data,  path);
           if(MMDB_SUCCESS != status) {
                dbgprintf("Got an error looking up the entry data - %s\n", MMDB_strerror(status));
           }
+			  
           if(entry_data.has_data) {
-               ret = strndup(entry_data.utf8_string, entry_data.data_size);
-               json_object_object_add(json, (char*)pData->fieldList.name[i], json_object_new_string(ret));
+			ret = strndup(entry_data.utf8_string, entry_data.data_size);
+			dbgprintf("ret %s\n",ret);
+		 --j;
+		 int k = j;			
+			dbgprintf("j %d\n",j);
+		for (;j>= 0;--j){
+			if (json1[k] == NULL ){
+				json1[k] = json_object_new_object(); 
+		        	json_object_object_add(json1[k], (char*)path[j], json_object_new_string(ret));
+				 }
+			else {
+				if (j == 0 ){ 
+		        		json_object_object_add(json, (char*)path[j], json1[k]);
+					 }
+				else {
+					json1[j] = json_object_new_object();
+		        	json_object_object_add(json1[j], (char*)path[j], json1[k]);
+			 		}
+				k--;
+		       }
+			}
+			dbgprintf("json %s\n",json_object_get_string(json));
           }
-          free(path);
      }
-
+		
 
 finalize_it:
 
      if(json) {
-          msgAddJSON(pMsg, (uchar *)JSON_IPLOOKUP_NAME, json, 0);
+          msgAddJSON(pMsg, (uchar *)JSON_IPLOOKUP_NAME, json, 0, 0);
      }
 ENDdoAction
 

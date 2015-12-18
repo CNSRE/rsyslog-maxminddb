@@ -52,25 +52,55 @@ rpm -ivh libmaxminddb-1.0.4-1.el6.pp.x86_64.rpm
 
 ## 配置示例
 
+
 ```
+module( load="imfile" )
 module( load="mmdblookup" )
-module( load="omelasticsearch" )
-template( type="string" string="{\"@timestamp\":\"%timereported:::date-rfc3339%\",\"host\":\"%hostname%\",\"geoip2\":%$!iplocation%,%$!msg:2:$%" name="clientlogtmpl" )
-action( type="mmjsonparse" )
-if ( $parsesuccess == "OK" ) then {
-    action( type="mmdblookup" mmdbfile="/data/geoip2.mmdb" fields=["country","city","isp","lat","lon"] key="!msg!clientip" )
-    set $!iplocation!location = $!iplocation!lat & "," & $!iplocation!lon;
-    unset $!iplocation!lat;
-    unset $!iplocation!lon;
-    action( type="omelasticsearch" template="clientlogtmpl" server="10.10.10.10" bulkmode="on" )
-    stop
+module( load="mmjsonparse" )
+
+input (
+	type="imfile"
+	File="/tmp/access.log"
+	addMetadata="off"
+	Severity="info"
+	Facility="user"
+	tag="test"
+	ruleset="test"
+)
+
+template( type="string" string="{\"@timestamp\":\"%timereported:::date-rfc3339%\",\"host\":\"%hostname%\",\"geoip2\":%$!iplocation%,%msg:7:$%" name="clientlog" )
+ruleset ( name="test"){
+	action( type="mmjsonparse" )
+	if ( $parsesuccess == "OK" ) then {
+	    action( type="mmdblookup" mmdbfile="/etc/rsyslog.d/GeoLite2-City.mmdb" fields=["!country!names!zh-CN","!city","!continent!names"] key="!clientip" )
+	    set $!iplocation!country2 = $!iplocation!country!names!zh-CN;
+	    set $!iplocation!city2 = $!iplocation!city!names!zh-CN;
+	    set $!iplocation!continent2 = $!iplocation!continent!names!zh-CN;
+	    unset $!iplocation!country;
+	    unset $!iplocation!city;
+	    unset $!iplocation!continent;
+	    action(type="omfwd" Target="10.211.55.4" port="514" Protocol="tcp" template="clientlog")
+	    stop
+	}
+
 }
-```
-
-生成的 ES 记录示例如下：
 
 ```
-{"@timestamp":"2015-08-16T21:56:00+0800","host":"localhost","geoip2":{"country":"中国","city":"北京","isp":"联通","location":"39.888,116.666"},"clientip":"202.106.0.2","os_ver":"ios8","weibo_ver":"5.4.0","uid":1234567890,"rtt":0.123456,"error_code":-10005,"error_msg":"你以为我会告诉你么"}
+ #cat /root/a
+@cee:{"clientip":"202.106.0.2","os_ver":"ios8","weibo_ver":"5.4.0","uid":1234567890,"rtt":0.123456,"error_code":-10005,"error_msg":"你以为我会告诉你么"}
+ #cat /root/a > /tmp/access
+```
+
+```
+
+生成的 logstash 记录示例如下：
+
+```
+{
+       "message" => "{\"@timestamp\":\"2015-12-16T23:00:38.876407+08:00\",\"host\":\"localhost\",\"geoip2\":{ \"country2\": \"中国\", \"city2\": \"北京\", \"continent2\": \"亚洲\" },\"clientip\":\"202.106.0.2\",\"os_ver\":\"ios8\",\"weibo_ver\":\"5.4.0\",\"uid\":1234567890,\"rtt\":0.123456,\"error_code\":-10005,\"error_msg\":\"你以为我会告诉你么\"} ",
+      "@version" => "1",
+    "@timestamp" => "2015-12-16T15:00:38.905Z",
+          "host" => "10.211.55.4"
 ```
 
 ## MaxMindDB 文件生成
