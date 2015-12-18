@@ -86,9 +86,9 @@ ruleset ( name="test"){
 }
 
 ```
- #cat /root/a
+#cat /root/a
 @cee:{"clientip":"202.106.0.2","os_ver":"ios8","weibo_ver":"5.4.0","uid":1234567890,"rtt":0.123456,"error_code":-10005,"error_msg":"你以为我会告诉你么"}
- #cat /root/a > /tmp/access
+#cat /root/a > /tmp/access
 ```
 
 ```
