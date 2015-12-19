@@ -269,51 +269,38 @@ CODESTARTdoAction
           strcpy(buf, (char *)pData->fieldList.name[i]);
           char *path[100] = {NULL};
           char sep[] = "!";
-		  int j = 0;
-		  char *s=strtok(buf,sep);
-		  dbgprintf("s %s\n",s);
+	  int j = 0;
+	  char *s=strtok(buf,sep);
           for (; s != NULL; j++){		  
-		  		path[j] = s;
-				s =strtok(NULL,sep);
-	  	  }
-		
-		if (j < 2){
-			path[1] = "names";
-			j++;
-		}
-		if (j < 3){
-			path[2] = "zh-CN";
-			j++;
-		}
-		/*if (path[0] == "location"){
-			path[1] = "time_zone";
-			path[2] = '\000';
-		}*/
+		path[j] = s;
+		s =strtok(NULL,sep);
+	  }
+
           int status = MMDB_aget_value(&result.entry, &entry_data,  path);
           if(MMDB_SUCCESS != status) {
                dbgprintf("Got an error looking up the entry data - %s\n", MMDB_strerror(status));
           }
 			  
           if(entry_data.has_data) {
-			ret = strndup(entry_data.utf8_string, entry_data.data_size);
-		 --j;
-		 int k = j;			
+		ret = strndup(entry_data.utf8_string, entry_data.data_size);
+		--j;
+		int k = j;			
 		for (;j>= 0;--j){
 			if (json1[k] == NULL ){
 				json1[k] = json_object_new_object(); 
 		        	json_object_object_add(json1[k], (char*)path[j], json_object_new_string(ret));
-				 }
+			}
 			else {
 				if (j == 0 ){ 
 		        		json_object_object_add(json, (char*)path[j], json1[k]);
-					 }
+				}
 				else {
 					json1[j] = json_object_new_object();
-		        	json_object_object_add(json1[j], (char*)path[j], json1[k]);
-			 		}
+		        		json_object_object_add(json1[j], (char*)path[j], json1[k]);
+			 	}
 				k--;
 		       }
-			}
+		}
           }
      }
 		
