@@ -72,7 +72,7 @@ template( type="string" string="{\"@timestamp\":\"%timereported:::date-rfc3339%\
 ruleset ( name="test"){
 	action( type="mmjsonparse" )
 	if ( $parsesuccess == "OK" ) then {
-	    action( type="mmdblookup" mmdbfile="/etc/rsyslog.d/GeoLite2-City.mmdb" fields=["!country!names!zh-CN","!city","!continent!names"] key="!clientip" )
+	    action( type="mmdblookup" mmdbfile="/etc/rsyslog.d/GeoLite2-City.mmdb" fields=["!country","!city","!continent"] key="!clientip" )
 	    set $!iplocation!country2 = $!iplocation!country!names!zh-CN;
 	    set $!iplocation!city2 = $!iplocation!city!names!zh-CN;
 	    set $!iplocation!continent2 = $!iplocation!continent!names!zh-CN;
