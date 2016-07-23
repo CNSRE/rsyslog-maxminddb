@@ -12,7 +12,7 @@ MaxMindDB 是 MaxMind 公司继 GeoIP 之后推出的新一代 IP 地址库[格�
 为完成高性能高精确度的 IP 归属地解析，选择在 Rsyslog 项目基础上，利用 C 语言版本的 libmaxminddb 接口开发了这个 Message Modification Module，目前已在新浪线上稳定运行数月。
 
 ## 编译
-1. 下载libfastjson ,版本大于0.99.3, https://github.com/rgerhards/libfastjson/commit/c437cad46af1998e3ad2dafa058c9e2c715df261
+1. 下载并安装libfastjson ,版本大于0.99.3, https://github.com/rgerhards/libfastjson/commit/c437cad46af1998e3ad2dafa058c9e2c715df261
 ```
 	git clone https://github.com/rgerhards/libfastjson
 ```
