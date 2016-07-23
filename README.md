@@ -91,7 +91,6 @@ cat /root/a > /tmp/access
 ```
 生成的 logstash 记录示例如下：
 
-```
 {
        "message" => "{\"@timestamp\":\"2016-07-23T10:35:21.572373+08:00\",\"host\":\"localhost\",\"geoip2\":{ \"continent\": { \"code\": \"AS\" }, \"location\": { \"accuracy_radius\": 50, \"latitude\": 34.772500, \"longitude\": 113.726600 } },\"clientip\":\"202.106.0.2\",\"os_ver\":\"ios8\",\"weibo_ver\":\"5.4.0\",\"uid\":1234567890,\"rtt\":0.123456,\"error_code\":-10005,\"error_msg\":\"你以为我会告诉你么\"}",
       "@version" => "1",
