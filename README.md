@@ -12,24 +12,31 @@ MaxMindDB 是 MaxMind 公司继 GeoIP 之后推出的新一代 IP 地址库[格�
 为完成高性能高精确度的 IP 归属地解析，选择在 Rsyslog 项目基础上，利用 C 语言版本的 libmaxminddb 接口开发了这个 Message Modification Module，目前已在新浪线上稳定运行数月。
 
 ## 编译
+1. 下载libfastjson ,版本大于0.99.3, https://github.com/rgerhards/libfastjson/commit/c437cad46af1998e3ad2dafa058c9e2c715df261
+```
+	git clone https://github.com/rgerhards/libfastjson
+```
 
-1. 下载 rsyslog 源码包：
+2. 下载 rsyslog 源码包：
 ```
 git clone https://github.com/rsyslog/rsyslog.git
 ```
-2. 复制本仓库源码文件到 rsyslog 源码目录内：
+3. 复制本仓库源码文件到 rsyslog 源码目录内：
 ```
 cp -r src/contrib/mmdblookup ../rsyslog/contrib/
 cp src/configure.ac ../rsyslog/
 cp src/Makefile.am ../rsyslog/
+cp src/libfastjson.env ../rsyslog/
 # 可以包括测试用例一起
 # cp src/tests ../rsyslog/
 ```
-3. 编译 rsyslog：
+4. 编译 rsyslog：
 ```
 export PKG_CONFIG_PATH=/lib64/pkgconfig/
 yum install -y libestr liblogging libmaxminddb-devel
 yum install -y git-core valgrind autoconf automake flex bison json-c-devel libuuid-devel libgcrypt-devel zlib-devel openssl-devel libcurl-devel gnutls-devel mysql-devel postgresql-devel libdbi-dbd-mysql libdbi-devel net-snmp-devel
+cd ../rsyslog
+source libfastjson.env
 autoconf
 ./configure --enable-mmdblookup --enable-elasticsearch --enable-mmjsonparse --***(其他你想加上的参数)
 ```
@@ -43,12 +50,8 @@ rpmbuild -bb ./rsyslog-pkg-rhel-centos/rpmbuild/SPECS/v8-stable.spec
 
 ## 部署使用
 
-1. 安装依赖：
 ```
-wget ftp://ftp.pbone.net/mirror/ftp.pramberger.at/systems/linux/contrib/rhel6/x86_64/libmaxminddb-1.0.4-1.el6.pp.x86_64.rpm
-rpm -ivh libmaxminddb-1.0.4-1.el6.pp.x86_64.rpm
-```
-2. 可以直接使用之前编译所得的完整 rsyslog，也可以单独复制 mmdblookup.so 文件到 /lib64/rsyslog 目录下。
+可以直接使用之前编译所得的完整 rsyslog，也可以单独复制 mmdblookup.so 文件到 /lib64/rsyslog 目录下。
 
 ## 配置示例
 
@@ -59,48 +62,43 @@ module( load="mmdblookup" )
 module( load="mmjsonparse" )
 
 input (
-	type="imfile"
-	File="/tmp/access.log"
-	addMetadata="off"
-	Severity="info"
-	Facility="user"
-	tag="test"
-	ruleset="test"
+    type="imfile"
+    File="/tmp/access.log"
+    addMetadata="off"
+    Severity="info"
+    Facility="user"
+    tag="test"
+    ruleset="test"
 )
 
 template( type="string" string="{\"@timestamp\":\"%timereported:::date-rfc3339%\",\"host\":\"%hostname%\",\"geoip2\":%$!iplocation%,%msg:7:$%" name="clientlog" )
 ruleset ( name="test"){
-	action( type="mmjsonparse" )
-	if ( $parsesuccess == "OK" ) then {
-	    action( type="mmdblookup" mmdbfile="/etc/rsyslog.d/GeoLite2-City.mmdb" fields=["!country","!city","!continent"] key="!clientip" )
-	    set $!iplocation!country2 = $!iplocation!country!names!zh-CN;
-	    set $!iplocation!city2 = $!iplocation!city!names!zh-CN;
-	    set $!iplocation!continent2 = $!iplocation!continent!names!zh-CN;
-	    unset $!iplocation!country;
-	    unset $!iplocation!city;
-	    unset $!iplocation!continent;
-	    action(type="omfwd" Target="10.211.55.4" port="514" Protocol="tcp" template="clientlog")
-	    stop
-	}
+    action( type="mmjsonparse" )
+    if ( $parsesuccess == "OK" ) then {
+        action( type="mmdblookup" mmdbfile="/etc/rsyslog.d/GeoLite2-City.mmdb" fields=["!continent!code","!location"] key="!clientip" )
+        action(type="omfwd" Target="10.211.55.3" port="514" Protocol="tcp" template="clientlog")
+        stop
+    }
 
 }
 
 ```
-#cat /root/a
+cat /root/a
 @cee:{"clientip":"202.106.0.2","os_ver":"ios8","weibo_ver":"5.4.0","uid":1234567890,"rtt":0.123456,"error_code":-10005,"error_msg":"你以为我会告诉你么"}
-#cat /root/a > /tmp/access
+cat /root/a > /tmp/access
 ```
 
 ```
-
 生成的 logstash 记录示例如下：
 
 ```
 {
-       "message" => "{\"@timestamp\":\"2015-12-16T23:00:38.876407+08:00\",\"host\":\"localhost\",\"geoip2\":{ \"country2\": \"中国\", \"city2\": \"北京\", \"continent2\": \"亚洲\" },\"clientip\":\"202.106.0.2\",\"os_ver\":\"ios8\",\"weibo_ver\":\"5.4.0\",\"uid\":1234567890,\"rtt\":0.123456,\"error_code\":-10005,\"error_msg\":\"你以为我会告诉你么\"} ",
+       "message" => "{\"@timestamp\":\"2016-07-23T10:35:21.572373+08:00\",\"host\":\"localhost\",\"geoip2\":{ \"continent\": { \"code\": \"AS\" }, \"location\": { \"accuracy_radius\": 50, \"latitude\": 34.772500, \"longitude\": 113.726600 } },\"clientip\":\"202.106.0.2\",\"os_ver\":\"ios8\",\"weibo_ver\":\"5.4.0\",\"uid\":1234567890,\"rtt\":0.123456,\"error_code\":-10005,\"error_msg\":\"你以为我会告诉你么\"}",
       "@version" => "1",
-    "@timestamp" => "2015-12-16T15:00:38.905Z",
-          "host" => "10.211.55.4"
+    "@timestamp" => "2016-07-23T02:35:21.586Z",
+          "host" => "10.211.55.3",
+          "port" => 58199
+}
 ```
 
 ## MaxMindDB 文件生成
