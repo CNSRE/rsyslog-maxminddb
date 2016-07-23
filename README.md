@@ -56,7 +56,6 @@ rpmbuild -bb ./rsyslog-pkg-rhel-centos/rpmbuild/SPECS/v8-stable.spec
 ## 配置示例
 
 
-```
 module( load="imfile" )
 module( load="mmdblookup" )
 module( load="mmjsonparse" )
@@ -81,6 +80,7 @@ ruleset ( name="test"){
     }
 
 }
+```
 
 ```
 cat /root/a
