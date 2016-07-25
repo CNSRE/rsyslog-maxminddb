@@ -210,19 +210,36 @@ ENDdbgPrintInstInfo
 BEGINtryResume
 CODESTARTtryResume
 ENDtryResume
+void str_split(char **membuf){
+	char *buf  = *membuf;
+	char tempbuf[strlen(buf)]  ;
+	memset(tempbuf, 0, strlen(buf))	;
 
-int str_split(char **array, char *buf, char *sep, int max){
-    char *token;
-    int i = 0;
-    int size = 0;
-    char *bp = strdup(buf);
-    while ( ( i < max -1 ) && ((token = strsep(&bp,sep))!= NULL ) ) {
-        array[i++] = token;
-    }
-    array[i] = NULL;  // set to null
-    size = i;
-    return size;
+	while(*buf++ != '\0'){
+		if (*buf == '\n' || *buf == '\t' || *buf == ' '){
+			continue;
+		}
+		else {
+			if (*buf == '<'){
+				char *p = strchr(buf, '>');
+				buf = buf + (int)(p - buf);
+				strcat(tempbuf, ",");
+			}
+			else if( *buf == '}'){
+				strcat(tempbuf, "},");
+			}
+			else{
+				strncat(tempbuf, buf, 1);
+			}
+		}
+	}
+
+	tempbuf[strlen(tempbuf) +1 ] = '\n';
+	memset(*membuf, 0, strlen(*membuf))	;
+	memcpy(*membuf, tempbuf, strlen(tempbuf));
 }
+
+
 
 BEGINdoAction
      msg_t *pMsg;
@@ -253,70 +270,77 @@ CODESTARTdoAction
      MMDB_lookup_result_s result = MMDB_lookup_string(&pWrkrData->mmdb, pszValue, &gai_err, &mmdb_err);
 
      if(0 != gai_err) {
-	  dbgprintf("Error from call to getaddrinfo for %s - %s\n", pszValue, gai_strerror(gai_err));
-	  ABORT_FINALIZE(RS_RET_OK);
+		dbgprintf("Error from call to getaddrinfo for %s - %s\n", pszValue, gai_strerror(gai_err));
+		dbgprintf("aaaaa\n");
+		ABORT_FINALIZE(RS_RET_OK);
      }
      if(MMDB_SUCCESS != mmdb_err) {
-	  dbgprintf("Got an error from the maxminddb library: %s\n", MMDB_strerror(mmdb_err));
-          ABORT_FINALIZE(RS_RET_OK);
+		dbgprintf("Got an error from the maxminddb library: %s\n", MMDB_strerror(mmdb_err));
+		dbgprintf("bbbbb\n");
+		ABORT_FINALIZE(RS_RET_OK);
      }
 
-     for(int i = 0 ; i <  pData->fieldList.nmemb ; ++i) {
-     	  struct json_object *json1[5] = {NULL};
-          char *ret = NULL;
-          MMDB_entry_data_s entry_data;
-          char buf[100];
-          strcpy(buf, (char *)pData->fieldList.name[i]);
-          char *path[100] = {NULL};
-          char sep[] = "!";
-		  int j = 0;
-		  char *s=strtok(buf,sep);
-		  dbgprintf("s %s\n",s);
-          for (; s != NULL; j++){		  
-		  		path[j] = s;
-				s =strtok(NULL,sep);
-	  	  }
+	MMDB_entry_data_list_s *entry_data_list = NULL;	
+	int status  = MMDB_get_entry_data_list(&result.entry, &entry_data_list);
+	
+	if (MMDB_SUCCESS != status){
+		dbgprintf("Got an error looking up the entry data - %s\n", MMDB_strerror(status));
+		ABORT_FINALIZE(RS_RET_OK);
+	}
+
+	FILE *memstream;
+	char *membuf;
+	size_t memlen;
+	memstream = open_memstream(&membuf, &memlen);
+
+	if (entry_data_list != NULL && memstream != NULL){
+		MMDB_dump_entry_data_list(memstream, entry_data_list, 2);
+		fflush(memstream);
+		str_split(&membuf);
+	}
+
+	json_object *total_json = json_tokener_parse(membuf);
+	fclose(memstream);
+	
+	if (pData->fieldList.nmemb < 1){
+		dbgprintf("fieldList.name is empty!...\n");
+		ABORT_FINALIZE(RS_RET_OK);
+	}
+
+	for (int i = 0 ; i <  pData->fieldList.nmemb ; ++i){
+		char buf[(strlen((char *)(pData->fieldList.name[i])))+1];
+		memset(buf, 0, sizeof(buf));
+		strcpy(buf, (char *)pData->fieldList.name[i]);
+
+		struct json_object *json1[5] = {NULL};
+		json_object *temp_json = total_json;
+		int j = 0;
+		char *path[10] = {NULL};	
+		char *sep = "!";
 		
-		if (j < 2){
-			path[1] = "names";
-			j++;
+		char *s = strtok(buf, sep);
+		for (; s != NULL; j++){
+			path[j] = s;
+			s = strtok(NULL, sep);
+			
+			json_object *sub_obj = json_object_object_get(temp_json, path[j]);
+			temp_json = sub_obj;
 		}
-		if (j < 3){
-			path[2] = "zh-CN";
-			j++;
-		}
-		/*if (path[0] == "location"){
-			path[1] = "time_zone";
-			path[2] = '\000';
-		}*/
-          int status = MMDB_aget_value(&result.entry, &entry_data,  path);
-          if(MMDB_SUCCESS != status) {
-               dbgprintf("Got an error looking up the entry data - %s\n", MMDB_strerror(status));
-          }
-			  
-          if(entry_data.has_data) {
-			ret = strndup(entry_data.utf8_string, entry_data.data_size);
-		 --j;
-		 int k = j;			
-		for (;j>= 0;--j){
-			if (json1[k] == NULL ){
-				json1[k] = json_object_new_object(); 
-		        	json_object_object_add(json1[k], (char*)path[j], json_object_new_string(ret));
-				 }
-			else {
-				if (j == 0 ){ 
-		        		json_object_object_add(json, (char*)path[j], json1[k]);
-					 }
-				else {
-					json1[j] = json_object_new_object();
-		        	json_object_object_add(json1[j], (char*)path[j], json1[k]);
-			 		}
-				k--;
-		       }
+
+		j--;
+		for (;j >= 0 ;j--){
+			if (j > 0){			
+     			json1[j] = json_object_new_object(); 
+				json_object_object_add(json1[j], path[j], temp_json);
+				temp_json = json1[j];
 			}
-          }
-     }
-		
+
+			else {
+				json_object_object_add(json, path[j], temp_json);
+			}
+		}
+
+	}
 
 finalize_it:
 
@@ -362,3 +386,4 @@ CODEmodInit_QueryRegCFSLineHdlr
      dbgprintf("mmdblookup: module compiled with rsyslog version %s.\n", VERSION);
      CHKiRet(objUse(errmsg, CORE_COMPONENT));
 ENDmodInit
+
